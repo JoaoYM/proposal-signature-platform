@@ -1,0 +1,30 @@
+name: Power Platform CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: maven
+
+    # Valida o projeto CRM
+    - name: Build and Test CRM API
+      run: mvn -B clean verify --file crm-api/pom.xml
+
+    # Valida o projeto SIGN
+    - name: Build and Test SIGN API
+      run: mvn -B clean verify --file sign-api/pom.xml
