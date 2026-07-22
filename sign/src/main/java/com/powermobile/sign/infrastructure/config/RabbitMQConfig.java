@@ -1,4 +1,4 @@
-package com.powermobile.crm.infrastructure.config;
+package com.powermobile.sign.infrastructure.config;
 
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
@@ -23,7 +23,7 @@ public class RabbitMQConfig {
 
     @Bean
     public Queue propostaCriadaQueue() {
-        return new Queue(QUEUE_PROPOSTA_CRIADA, true); // true = fila durável (sobrevive a reinicializações)
+        return new Queue(QUEUE_PROPOSTA_CRIADA, true); 
     }
 
     @Bean
