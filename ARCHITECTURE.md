@@ -137,8 +137,8 @@ graph TD
     MQ -->|contrato.status| CSL
     CSL -->|Atualiza status| DB1
     MQ -->|Falha após 3 retries| MQ2
-    PC -.->|@Cacheable| RD
-    CC -.->|@Cacheable / @CacheEvict| RD
+    PC -.->|Cacheable| RD
+    CC -.->|Cacheable / CacheEvict| RD
     PC -.-> ZK
     CC -.-> ZK
     MQ -.-> ZK
