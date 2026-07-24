@@ -11,8 +11,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
-import java.util.List;
 import java.util.UUID;
 
 @Slf4j
@@ -51,8 +52,8 @@ public class PropostaServiceImpl implements PropostaService {
     }
 
     @Override
-    public List<Proposta> buscarPorCliente(String clienteNome) {
-        return propostaRepository.findByClienteNomeContainingIgnoreCase(clienteNome);
+    public Page<Proposta> buscarPorCliente(String clienteNome, Pageable pageable) {
+        return propostaRepository.findByClienteNomeContainingIgnoreCase(clienteNome, pageable);
     }
 
     private void registrarEventoOutbox(Proposta proposta) {

@@ -8,12 +8,14 @@ import com.powermobile.crm.api.dto.PropostaResponseDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
-import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -53,5 +55,16 @@ public class PropostaController {
         // Busca a entidade do banco e converte para DTO
         Proposta proposta = propostaService.buscarPorId(id);
         return PropostaResponseDTO.fromEntity(proposta);
+    }
+
+    @GetMapping
+    @Cacheable(value = "propostas-por-cliente", key = "#clienteNome + '-' + #pageable.pageNumber + '-' + #pageable.pageSize")
+    @ResponseStatus(HttpStatus.OK)
+    public Page<PropostaResponseDTO> buscarPorCliente(
+            @RequestParam String clienteNome, 
+            @ParameterObject Pageable pageable) {
+            
+        Page<Proposta> propostas = propostaService.buscarPorCliente(clienteNome, pageable);
+        return propostas.map(PropostaResponseDTO::fromEntity);
     }
 }

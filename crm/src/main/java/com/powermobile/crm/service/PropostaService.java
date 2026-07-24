@@ -1,11 +1,12 @@
 package com.powermobile.crm.service;
 
 import com.powermobile.crm.domain.model.Proposta;
-import java.util.List;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface PropostaService {
     Proposta criarProposta(Proposta proposta);
     Proposta buscarPorId(UUID id);
-    List<Proposta> buscarPorCliente(String clienteNome);
+    Page<Proposta> buscarPorCliente(String clienteNome, Pageable pageable);
 }
