@@ -54,13 +54,4 @@ public class PropostaController {
         Proposta proposta = propostaService.buscarPorId(id);
         return PropostaResponseDTO.fromEntity(proposta);
     }
-
-    @GetMapping
-    public ResponseEntity<List<PropostaResponseDTO>> buscarPorCliente(@RequestParam String clienteNome) {
-        List<Proposta> propostas = propostaService.buscarPorCliente(clienteNome);
-        List<PropostaResponseDTO> response = propostas.stream()
-                .map(PropostaResponseDTO::fromEntity)
-                .toList();
-        return ResponseEntity.ok(response);
-    }
 }
