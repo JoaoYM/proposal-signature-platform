@@ -44,10 +44,10 @@ public class ContratoEvent {
     private AcaoAuditoria acao;
 
     @Column(nullable = false)
-    private String ator; // Ex: Sistema, Cliente João...
+    private String ator;
 
     @Column(columnDefinition = "TEXT")
-    private String detalhes; // JSON flexível para metadados
+    private String detalhes;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)

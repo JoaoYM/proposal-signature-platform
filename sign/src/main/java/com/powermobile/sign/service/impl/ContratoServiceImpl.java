@@ -1,17 +1,21 @@
 package com.powermobile.sign.service.impl;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.powermobile.sign.api.dto.ContratoConcluidoEventDTO;
 import com.powermobile.sign.domain.enums.AcaoAuditoria;
 import com.powermobile.sign.domain.enums.ContratoStatus;
+import com.powermobile.sign.domain.exception.AssinaturaDomainException;
+import com.powermobile.sign.domain.exception.ContratoNotFoundException;
+import com.powermobile.sign.domain.model.Assinatura;
 import com.powermobile.sign.domain.model.Contrato;
 import com.powermobile.sign.domain.model.ContratoEvent;
-import com.powermobile.sign.domain.model.OutboxEvent;
 import com.powermobile.sign.domain.model.Participante;
+import com.powermobile.sign.domain.port.in.ContratoUseCase;
+import com.powermobile.sign.domain.port.out.EventPublisher;
 import com.powermobile.sign.domain.repository.ContratoEventRepository;
 import com.powermobile.sign.domain.repository.ContratoRepository;
-import com.powermobile.sign.domain.repository.OutboxEventRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,91 +25,107 @@ import java.util.UUID;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class ContratoServiceImpl {
+public class ContratoServiceImpl implements ContratoUseCase {
 
     private final ContratoRepository contratoRepository;
     private final ContratoEventRepository auditoriaRepository;
-    private final OutboxEventRepository outboxEventRepository;
-    private final ObjectMapper objectMapper;
+    private final EventPublisher eventPublisher;
 
     @Transactional
     public void gerarContratoDaProposta(String propostaId, String clienteNome, String clienteEmail) {
         log.info("Gerando contrato para a proposta: {}", propostaId);
 
-        // 1. Cria o contrato (Simulando o JSON de conteúdo exigido)[cite: 1]
         Contrato contrato = Contrato.builder()
                 .propostaId(propostaId)
                 .conteudo("{ \"cliente\": \"" + clienteNome + "\", \"termos\": \"Termos padrão de serviço\" }")
                 .status(ContratoStatus.AGUARDANDO_ASSINATURA)
                 .build();
 
-        // 2. Define a ordem dos participantes (Ex: Cliente assina primeiro, Empresa depois)[cite: 1]
         Participante cliente = Participante.builder()
                 .nome(clienteNome)
                 .email(clienteEmail)
                 .ordem(1)
-                .assinou(false)
+                // A assinatura inicializa como null
                 .build();
 
         Participante empresa = Participante.builder()
                 .nome("Diretor Power Mobile")
                 .email("diretor@powermobile.com")
                 .ordem(2)
-                .assinou(false)
                 .build();
 
         contrato.adicionarParticipante(cliente);
         contrato.adicionarParticipante(empresa);
 
-        Contrato salvo = contratoRepository.save(contrato);
+        Contrato contratoSalvo = contratoRepository.save(contrato);
 
-        // 3. Registra na Auditoria[cite: 1]
-        registrarAuditoria(salvo.getId().toString(), AcaoAuditoria.CONTRATO_GERADO, "Sistema", "Contrato criado a partir da proposta");
+        try {
+            registrarAuditoria(contratoSalvo.getId().toString(), AcaoAuditoria.CONTRATO_GERADO, "Sistema",
+            "Contrato criado a partir da proposta");
+            log.info("🎯 CONTRATO GERADO! Copie este ID para a assinatura: {}", contratoSalvo.getId());
+        } catch (Exception e) {
+            log.error("Erro ao registrar auditoria para o contrato: {}", contratoSalvo.getId(), e);
+            throw new RuntimeException("Falha ao registrar auditoria", e);
+        }
     }
 
+    @Override
+    public Contrato buscarPorId(UUID id) {
+        return contratoRepository.findById(id)
+                .orElseThrow(() -> new ContratoNotFoundException(id));
+    }
+
+    @Override
     @Transactional
+    @CacheEvict(value = "contratos", key = "#contratoId")
     public void processarAssinatura(UUID contratoId, String emailParticipante, boolean aceitou) {
         Contrato contrato = contratoRepository.findById(contratoId)
-                .orElseThrow(() -> new RuntimeException("Contrato não encontrado"));
+                .orElseThrow(() -> new ContratoNotFoundException(contratoId));
 
         if (contrato.getStatus() != ContratoStatus.AGUARDANDO_ASSINATURA) {
-            throw new IllegalStateException("Contrato não está mais em fase de assinatura.");
+            throw new AssinaturaDomainException("Contrato não está mais em fase de assinatura.");
         }
 
         Participante atual = contrato.getParticipantes().stream()
                 .filter(p -> p.getEmail().equals(emailParticipante))
                 .findFirst()
-                .orElseThrow(() -> new RuntimeException("Participante não faz parte deste contrato"));
+                .orElseThrow(() -> new AssinaturaDomainException("Participante não faz parte deste contrato"));
 
-        if (atual.getAssinou()) {
-            throw new IllegalStateException("Participante já assinou este contrato.");
+        if (atual.jaAssinou()) {
+            throw new AssinaturaDomainException("Participante já assinou este contrato.");
         }
 
-        // Valida a regra de negócio central: Ordem sequencial[cite: 1]
         boolean turnoCorreto = contrato.getParticipantes().stream()
                 .filter(p -> p.getOrdem() < atual.getOrdem())
-                .allMatch(Participante::getAssinou);
+                .allMatch(Participante::jaAssinou); 
 
         if (!turnoCorreto) {
-            throw new IllegalStateException("Não é o turno deste participante assinar. Aguarde o anterior.");
+            throw new AssinaturaDomainException("Não é o turno deste participante assinar. Aguarde o anterior.");
         }
 
         if (aceitou) {
-            atual.setAssinou(true);
-            atual.setDataAssinatura(LocalDateTime.now());
-            registrarAuditoria(contratoId.toString(), AcaoAuditoria.ASSINATURA_REGISTRADA, atual.getNome(), "Assinatura realizada com sucesso");
+            Assinatura assinaturaFisica = Assinatura.builder()
+                    .dataHora(LocalDateTime.now())
+                    .ipOrigem("127.0.0.1") 
+                    .hashValidacao(UUID.randomUUID().toString())
+                    .build();
 
-            // Verifica se todos assinaram[cite: 1]
-            boolean todosAssinaram = contrato.getParticipantes().stream().allMatch(Participante::getAssinou);
+            atual.registrarAssinatura(assinaturaFisica);
+
+            registrarAuditoria(contratoId.toString(), AcaoAuditoria.ASSINATURA_REGISTRADA, atual.getNome(),
+                    "Assinatura realizada com sucesso");
+
+            boolean todosAssinaram = contrato.getParticipantes().stream().allMatch(Participante::jaAssinou);
             if (todosAssinaram) {
                 contrato.setStatus(ContratoStatus.CONCLUIDO);
-                registrarAuditoria(contratoId.toString(), AcaoAuditoria.CONTRATO_FINALIZADO, "Sistema", "Todas as assinaturas concluídas");
+                registrarAuditoria(contratoId.toString(), AcaoAuditoria.CONTRATO_FINALIZADO, "Sistema",
+                        "Todas as assinaturas concluídas");
                 notificarCrmAlteracaoStatus(contrato);
             }
         } else {
-            // Se recusou, cancela o fluxo[cite: 1]
             contrato.setStatus(ContratoStatus.CANCELADO);
-            registrarAuditoria(contratoId.toString(), AcaoAuditoria.ASSINATURA_RECUSADA, atual.getNome(), "Participante recusou o contrato");
+            registrarAuditoria(contratoId.toString(), AcaoAuditoria.ASSINATURA_RECUSADA, atual.getNome(),
+                    "Participante recusou o contrato");
             notificarCrmAlteracaoStatus(contrato);
         }
 
@@ -123,19 +143,10 @@ public class ContratoServiceImpl {
     }
 
     private void notificarCrmAlteracaoStatus(Contrato contrato) {
-        try {
-            // Usa o Outbox para garantir a entrega da mensagem de volta ao CRM[cite: 1]
-            String payload = objectMapper.writeValueAsString(contrato);
-            OutboxEvent outbox = OutboxEvent.builder()
-                    .aggregateType("CONTRATO_STATUS")
-                    .aggregateId(contrato.getId().toString())
-                    .payload(payload)
-                    .status("PENDING")
-                    .build();
-            outboxEventRepository.save(outbox);
-        } catch (Exception e) {
-            log.error("Erro ao gerar evento de notificação para o CRM", e);
-            throw new RuntimeException(e);
-        }
+        ContratoConcluidoEventDTO evento = new ContratoConcluidoEventDTO(
+                contrato.getPropostaId(), 
+                contrato.getStatus().name()
+        );
+        eventPublisher.publish("CONTRATO_STATUS", contrato.getId().toString(), evento);
     }
 }

@@ -6,7 +6,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "outbox_events")
+@Table(name = "sign_outbox_events")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -19,16 +19,16 @@ public class OutboxEvent {
     private UUID id;
 
     @Column(name = "aggregate_type", nullable = false)
-    private String aggregateType; // Ex: "PROPOSTA"
+    private String aggregateType;
 
     @Column(name = "aggregate_id", nullable = false)
     private String aggregateId;
 
     @Column(columnDefinition = "TEXT", nullable = false)
-    private String payload; // O JSON que será enviado ao RabbitMQ
+    private String payload;
 
     @Column(nullable = false)
-    private String status; // PENDING ou PROCESSED
+    private String status;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
