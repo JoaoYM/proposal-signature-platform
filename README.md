@@ -54,11 +54,12 @@ A plataforma é composta por dois microsserviços independentes que se comunicam
 git clone https://github.com/JoaoYM/proposal-signature-platform.git
 cd proposal-signature-platform
 
-# 2. Gere os artefatos (.jar) do microsserviço CRM e SIGN ignorando os testes
-./crm/mvnw clean package -DskipTests -f crm/pom.xml
-./sign/mvnw clean package -DskipTests -f sign/pom.xml
+# 2. Gere os artefatos (.jar) dos microsserviços ignorando os testes
+cd crm && ./mvnw clean package -DskipTests
+cd ../sign && ./mvnw clean package -DskipTests
 
-# 3. Construa as imagens e suba toda a infraestrutura (MySQL, RabbitMQ, Redis, Zipkin e APIs)
+# 3. Volte para a raiz e suba a infraestrutura
+cd ..
 docker-compose up -d --build
 ```
 
@@ -123,16 +124,61 @@ domain/      → Entidades, regras de negócio, portas de saída
 proposal-signature-platform/
 ├── crm/                          # Microsserviço CRM
 │   ├── src/main/java/com/powermobile/crm/
-│   │   ├── adapters/             # Inbound/Outbound adapters
-│   │   ├── application/          # Use cases
-│   │   └── domain/               # Entities, ports, exceptions
+│   │   ├── CrmApiApplication.java
+│   │   ├── adapters/
+│   │   │   ├── inbound/
+│   │   │   │   ├── web/
+│   │   │   │   │   ├── controller/
+│   │   │   │   │   ├── dto/
+│   │   │   │   │   └── handler/
+│   │   │   └── outbound/
+│   │   │       ├── persistence/
+│   │   │       ├── rabbitmq/
+│   │   │       └── config/
+│   │   ├── application/
+│   │   │   └── port/
+│   │   │       └── in/
+│   │   └── domain/
+│   │       ├── entity/
+│   │       ├── port/
+│   │       │   └── out/
+│   │       ├── exception/
+│   │       └── valueobject/
+│   ├── src/test/java/com/powermobile/crm/
+│   │   └── service/
+│   ├── src/main/resources/
+│   │   ├── application.yml
+│   │   ├── application-test.yml
+│   │   └── db/migration/
 │   ├── Dockerfile
 │   └── pom.xml
 ├── sign/                         # Microsserviço SIGN
 │   ├── src/main/java/com/powermobile/sign/
+│   │   ├── SignApiApplication.java
 │   │   ├── adapters/
+│   │   │   ├── inbound/
+│   │   │   │   ├── web/
+│   │   │   │   ├── dto/
+│   │   │   │   └── exception/
+│   │   │   └── outbound/
+│   │   │       ├── persistence/
+│   │   │       ├── rabbitmq/
+│   │   │       └── config/
 │   │   ├── application/
+│   │   │   └── port/
+│   │   │       └── in/
 │   │   └── domain/
+│   │       ├── entity/
+│   │       ├── port/
+│   │       │   └── out/
+│   │       ├── exception/
+│   │       └── valueobject/
+│   ├── src/test/java/com/powermobile/sign/
+│   │   └── service/
+│   ├── src/main/resources/
+│   │   ├── application.yml
+│   │   ├── application-test.yml
+│   │   └── db/migration/
 │   ├── Dockerfile
 │   └── pom.xml
 ├── docker-compose.yml
