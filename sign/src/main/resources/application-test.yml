@@ -1,0 +1,9 @@
+spring:
+  datasource:
+    url: jdbc:tc:mysql:8.0:///testdb
+    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
+  rabbitmq:
+    host: localhost
+    port: 5672
+  cache:
+    type: none

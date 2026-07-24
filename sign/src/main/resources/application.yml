@@ -1,0 +1,41 @@
+spring:
+  application:
+    name: sign-api
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+
+  rabbitmq:
+    listener:
+      simple:
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 2000
+          multiplier: 1.5
+
+  cache:
+    type: redis
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+logging:
+  pattern:
+    console: "{\"timestamp\":\"%d{yyyy-MM-dd HH:mm:ss}\",\"level\":\"%p\",\"service\":\"${spring.application.name}\",\"traceId\":\"%X{traceId}\",\"spanId\":\"%X{spanId}\",\"message\":\"%m\"}%n"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,info
+  tracing:
+    sampling:
+      probability: 1.0
