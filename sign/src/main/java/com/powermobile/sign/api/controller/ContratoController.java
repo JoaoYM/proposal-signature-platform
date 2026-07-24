@@ -1,11 +1,14 @@
 package com.powermobile.sign.api.controller;
 
 import com.powermobile.sign.api.dto.AssinaturaRequest;
+import com.powermobile.sign.api.dto.ContratoResponseDTO;
 import com.powermobile.sign.domain.model.Contrato;
-import com.powermobile.sign.domain.repository.ContratoRepository;
-import com.powermobile.sign.service.impl.ContratoServiceImpl;
+import com.powermobile.sign.domain.port.in.ContratoUseCase;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,8 +19,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ContratoController {
 
-    private final ContratoServiceImpl contratoService;
-    private final ContratoRepository contratoRepository;
+    private final ContratoUseCase contratoUseCase;
 
     @PostMapping("/{id}/assinaturas")
     public ResponseEntity<String> processarAssinatura(
@@ -25,7 +27,7 @@ public class ContratoController {
             @RequestBody @Valid AssinaturaRequest request) {
 
         // A regra de negócio, ordem sequencial e auditoria estão todas encapsuladas no serviço
-        contratoService.processarAssinatura(id, request.email(), request.aceitou());
+        contratoUseCase.processarAssinatura(id, request.email(), request.aceitou());
 
         String mensagem = request.aceitou() 
                 ? "Assinatura registrada com sucesso." 
@@ -34,11 +36,11 @@ public class ContratoController {
         return ResponseEntity.ok(mensagem);
     }
 
-    // Endpoint auxiliar útil para consultas e testes da evolução dos status
     @GetMapping("/{id}")
-    public ResponseEntity<Contrato> buscarContratoPorId(@PathVariable UUID id) {
-        return contratoRepository.findById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    @Cacheable(value = "contratos", key = "#id")
+    @ResponseStatus(HttpStatus.OK)
+    public ContratoResponseDTO buscarContratoPorId(@PathVariable UUID id) {
+        Contrato contrato = contratoUseCase.buscarPorId(id);
+        return ContratoResponseDTO.fromEntity(contrato);
     }
 }
