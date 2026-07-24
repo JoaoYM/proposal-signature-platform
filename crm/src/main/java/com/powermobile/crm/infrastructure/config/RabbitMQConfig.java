@@ -15,6 +15,8 @@ public class RabbitMQConfig {
     public static final String ROUTING_KEY_PROPOSTA_CRIADA = "proposta.criada.routingKey";
     public static final String QUEUE_CONTRATO_STATUS = "contrato.status.queue";
     public static final String ROUTING_KEY_CONTRATO_STATUS = "contrato.status.routingKey";
+    public static final String DLQ_PROPOSTA_CRIADA = "proposta.criada.dlq";
+    public static final String DLQ_CONTRATO_STATUS = "contrato.status.dlq";
 
     @Bean
     public DirectExchange propostaExchange() {
@@ -23,7 +25,7 @@ public class RabbitMQConfig {
 
     @Bean
     public Queue propostaCriadaQueue() {
-        return new Queue(QUEUE_PROPOSTA_CRIADA, true); // true = fila durável (sobrevive a reinicializações)
+        return new Queue(QUEUE_PROPOSTA_CRIADA, true);
     }
 
     @Bean
@@ -39,5 +41,15 @@ public class RabbitMQConfig {
     @Bean
     public Binding bindingContratoStatus(Queue contratoStatusQueue, DirectExchange propostaExchange) {
         return BindingBuilder.bind(contratoStatusQueue).to(propostaExchange).with(ROUTING_KEY_CONTRATO_STATUS);
+    }
+
+    @Bean
+    public Queue propostaCriadaDlq() {
+        return new Queue(DLQ_PROPOSTA_CRIADA, true);
+    }
+
+    @Bean
+    public Queue contratoStatusDlq() {
+        return new Queue(DLQ_CONTRATO_STATUS, true);
     }
 }

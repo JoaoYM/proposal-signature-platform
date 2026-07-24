@@ -29,14 +29,14 @@ public class OutboxRelayWorker {
         List<OutboxEvent> eventosPendentes = outboxEventRepository.findByStatusOrderByCreatedAtAsc("PENDING");
 
         if (eventosPendentes.isEmpty()) {
-            return; // Nada a processar
+            return;
         }
 
         log.info("Encontrados {} eventos pendentes no Outbox. Iniciando processamento...", eventosPendentes.size());
 
         for (OutboxEvent evento : eventosPendentes) {
             try {
-                // Envia a proposta para o sistema de assinatura (SIGN)[cite: 1]
+                // Envia a proposta para o sistema de assinatura (SIGN)
                 rabbitTemplate.convertAndSend(
                         RabbitMQConfig.EXCHANGE_NAME, 
                         RabbitMQConfig.ROUTING_KEY_PROPOSTA_CRIADA, 
@@ -51,7 +51,7 @@ public class OutboxRelayWorker {
                 
             } catch (Exception e) {
                 // Se o RabbitMQ estiver fora do ar, o log registra, a transação faz rollback desse evento específico,
-                // e ele tentará novamente na próxima execução do @Scheduled (garantia de consistência).
+                // e ele tentará novamente na próxima execução do @Scheduled.
                 log.error("Falha ao publicar evento ID {} no RabbitMQ: {}", evento.getId(), e.getMessage());
             }
         }

@@ -27,8 +27,15 @@ public class ContratoStatusListener {
     public void processarStatusContrato(String payload) {
         try {
             log.info("Atualização de contrato recebida: {}", payload);
-            
+
             JsonNode jsonNode = objectMapper.readTree(payload);
+
+            // Blindagem contra JSONs mal formados
+            if (!jsonNode.has("propostaId") || !jsonNode.has("status")) {
+                log.error("Mensagem inválida recebida: campos obrigatórios ausentes. Payload: {}", payload);
+                return; // Ignora a mensagem ou lança uma exception customizada para cair na DLQ
+            }
+
             String propostaIdStr = jsonNode.get("propostaId").asText();
             String statusContrato = jsonNode.get("status").asText();
 
