@@ -4,6 +4,7 @@ import com.powermobile.sign.domain.enums.ContratoStatus;
 import com.powermobile.sign.domain.model.Contrato;
 import com.powermobile.sign.domain.model.ContratoEvent;
 import com.powermobile.sign.domain.model.Participante;
+import com.powermobile.sign.domain.port.out.EventPublisher;
 import com.powermobile.sign.domain.repository.ContratoEventRepository;
 import com.powermobile.sign.domain.repository.ContratoRepository;
 import com.powermobile.sign.domain.repository.OutboxEventRepository;
@@ -38,6 +39,9 @@ class ContratoServiceImplTest {
 
     @Mock
     private OutboxEventRepository outboxEventRepository;
+
+    @Mock
+    private EventPublisher eventPublisher;
 
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
