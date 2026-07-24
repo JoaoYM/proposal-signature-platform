@@ -44,4 +44,9 @@ public class Proposta {
         itens.add(item);
         item.setProposta(this);
     }
+
+    public void removerItem(ItemProposta item) {
+        itens.remove(item);
+        item.setProposta(null);
+    }
 }

@@ -9,7 +9,5 @@ import java.util.UUID;
 
 @Repository
 public interface PropostaRepository extends JpaRepository<Proposta, UUID> {
-    
-    // Atende ao requisito: "Consultar propostas por [...] cliente"
     List<Proposta> findByClienteNomeContainingIgnoreCase(String clienteNome);
 }

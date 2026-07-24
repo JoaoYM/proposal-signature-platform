@@ -1,11 +1,10 @@
 package com.powermobile.crm.service.impl;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.powermobile.crm.api.dto.PropostaResponseDTO;
 import com.powermobile.crm.domain.enums.PropostaStatus;
-import com.powermobile.crm.domain.model.OutboxEvent;
+import com.powermobile.crm.domain.exception.PropostaNotFoundException;
 import com.powermobile.crm.domain.model.Proposta;
-import com.powermobile.crm.domain.repository.OutboxEventRepository;
+import com.powermobile.crm.domain.port.out.EventPublisher;
 import com.powermobile.crm.domain.repository.PropostaRepository;
 import com.powermobile.crm.service.PropostaService;
 import lombok.RequiredArgsConstructor;
@@ -22,26 +21,24 @@ import java.util.UUID;
 public class PropostaServiceImpl implements PropostaService {
 
     private final PropostaRepository propostaRepository;
-    private final OutboxEventRepository outboxEventRepository;
-    private final ObjectMapper objectMapper;
+    private final EventPublisher eventPublisher;
 
     @Override
-    @Transactional // Garante o ACID: Salva a proposta E o evento, ou faz rollback de tudo
+    @Transactional
     public Proposta criarProposta(Proposta proposta) {
         log.info("Iniciando criacao de proposta para o cliente: {}", proposta.getClienteNome());
 
         // 1. Define o estado inicial exigido
         proposta.setStatus(PropostaStatus.CRIADA);
 
-        // Garante a bidirecionalidade dos itens (boa prática do JPA)
+        // Garante a bidirecionalidade dos itens
         if (proposta.getItens() != null) {
             proposta.getItens().forEach(item -> item.setProposta(proposta));
         }
 
-        // 2. Salva a proposta no banco de dados
         Proposta propostaSalva = propostaRepository.save(proposta);
 
-        // 3. Registra o evento no Outbox para integração futura com o SIGN
+        // 2. Registra o evento no Outbox para integração futura com o SIGN
         registrarEventoOutbox(propostaSalva);
 
         return propostaSalva;
@@ -50,7 +47,7 @@ public class PropostaServiceImpl implements PropostaService {
     @Override
     public Proposta buscarPorId(UUID id) {
         return propostaRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Proposta não encontrada: " + id));
+                .orElseThrow(() -> new PropostaNotFoundException(id));
     }
 
     @Override
@@ -59,22 +56,7 @@ public class PropostaServiceImpl implements PropostaService {
     }
 
     private void registrarEventoOutbox(Proposta proposta) {
-        try {
-            String payload = objectMapper.writeValueAsString(proposta);
-
-            OutboxEvent evento = OutboxEvent.builder()
-                    .aggregateType("PROPOSTA")
-                    .aggregateId(proposta.getId().toString())
-                    .payload(payload)
-                    .status("PENDING")
-                    .build();
-
-            outboxEventRepository.save(evento);
-            log.info("Evento PENDING registrado no Outbox para a proposta: {}", proposta.getId());
-            
-        } catch (JsonProcessingException e) {
-            log.error("Erro ao serializar payload da proposta para o Outbox", e);
-            throw new RuntimeException("Falha na integridade do evento", e);
-        }
+        PropostaResponseDTO eventoDto = PropostaResponseDTO.fromEntity(proposta);
+        eventPublisher.publish("PROPOSTA", proposta.getId().toString(), eventoDto);
     }
 }
