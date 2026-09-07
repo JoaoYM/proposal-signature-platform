@@ -22,11 +22,40 @@ jobs:
         cache: maven
 
     - name: Build and Test CRM
-      run: mvn -B clean verify --file crm/pom.xml
+      run: mvn -B clean verify -Pintegration --file crm/pom.xml
       env:
         SPRING_PROFILES_ACTIVE: test
 
     - name: Build and Test SIGN
-      run: mvn -B clean verify --file sign/pom.xml
+      run: mvn -B clean verify -Pintegration --file sign/pom.xml
       env:
         SPRING_PROFILES_ACTIVE: test
+
+    - name: Start acceptance environment
+      run: docker compose up -d --build --wait
+
+    - name: Run acceptance tests
+      run: mvn -B clean verify --file acceptance/pom.xml
+
+    - name: Capture Compose logs
+      if: always()
+      run: docker compose logs --no-color > compose.log
+
+    - name: Stop acceptance environment
+      if: always()
+      run: docker compose down --volumes
+
+    - name: Upload validation evidence
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: validation-reports
+        path: |
+          crm/target/surefire-reports
+          crm/target/failsafe-reports
+          crm/target/site/jacoco
+          sign/target/surefire-reports
+          sign/target/failsafe-reports
+          sign/target/site/jacoco
+          acceptance/target/surefire-reports
+          compose.log

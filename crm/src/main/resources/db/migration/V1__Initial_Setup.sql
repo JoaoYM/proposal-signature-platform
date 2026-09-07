@@ -17,11 +17,13 @@ CREATE TABLE itens_proposta (
     CONSTRAINT fk_item_proposta FOREIGN KEY (proposta_id) REFERENCES propostas(id) ON DELETE CASCADE
 );
 
-CREATE TABLE outbox_events (
+CREATE TABLE crm_outbox_events (
     id VARCHAR(36) PRIMARY KEY,
     aggregate_type VARCHAR(100) NOT NULL,
     aggregate_id VARCHAR(100) NOT NULL,
     payload TEXT NOT NULL,
     status VARCHAR(50) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
 );
+
+CREATE TABLE inbox_events (event_id VARCHAR(36) PRIMARY KEY, event_type VARCHAR(100) NOT NULL, aggregate_id VARCHAR(100) NOT NULL, occurred_at DATETIME(6) NOT NULL, processed_at DATETIME(6) NOT NULL);

@@ -1,5 +1,9 @@
 # Proposal Signature Platform
 
+> **Escopo de segurança:** o fluxo é uma simulação técnica de aceite/recusa. Não constitui assinatura eletrônica juridicamente validada. O código registra IP observado diretamente (não confia em `X-Forwarded-For`), mantém o conteúdo do contrato imutável após criação e calcula SHA-256 sobre documento e metadados do aceite. Tokens individuais, autenticação/autorização, rate limiting, retenção/LGPD e requisitos jurídicos continuam pendentes de decisão de produto e segurança; veja `SECURITY_SCOPE.md`.
+
+O ambiente usa bancos isolados (`crm_db`/`crm_user` e `sign_db`/`sign_user`). As imagens são compiladas em multi-stage Dockerfiles, portanto uma cópia limpa pode ser iniciada com `docker compose up --build`. O endpoint `GET /api/v1/contratos?propostaId=<id>` elimina a consulta manual ao banco.
+
 Uma plataforma SaaS de **gestão de propostas e assinatura eletrônica de contratos**, construída sobre uma arquitetura de microsserviços com comunicação assíncrona orientada a eventos.
 
 ---
@@ -34,7 +38,7 @@ A plataforma é composta por dois microsserviços independentes que se comunicam
 | **Cache** | Redis 7 |
 | **Observabilidade** | Micrometer Tracing (Brave/Zipkin), Actuator |
 | **Containerização** | Docker / Docker Compose |
-| **Testes** | JUnit 5, Mockito, Testcontainers |
+| **Testes** | JUnit 5, Mockito, Testcontainers e Cucumber |
 | **CI/CD** | GitHub Actions |
 | **Documentação API** | SpringDoc OpenAPI (Swagger UI) |
 
@@ -63,7 +67,18 @@ cd ..
 docker-compose up -d --build
 ```
 
-Aguarde aproximadamente 30 segundos para todos os serviços iniciarem.
+Aguarde os healthchecks ou use `docker compose up -d --build --wait`.
+
+### Validação automatizada
+
+```bash
+mvn -B clean verify -Pintegration --file crm/pom.xml
+mvn -B clean verify -Pintegration --file sign/pom.xml
+docker compose up -d --build --wait
+mvn -B clean verify --file acceptance/pom.xml
+```
+
+A suíte BDD em `acceptance/` valida conclusão, ordem e recusa. A coleção importável está em `insomnia/proposal-signature.json` e o fluxo card → Gherkin → teste → implementação → evidência está em `.ai/README.md`.
 
 ### Acessos
 
