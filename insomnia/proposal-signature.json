@@ -1,0 +1,11 @@
+{"_type":"export","__export_format":4,"__export_date":"2026-09-06T22:45:00.000Z","__export_source":"proposal-signature-platform","resources":[
+{"_id":"wrk_proposal","_type":"workspace","name":"Proposal Signature Platform","description":"Fluxo CRM → SIGN → CRM"},
+{"_id":"env_base","_type":"environment","parentId":"wrk_proposal","name":"Local","data":{"crm":"http://localhost:8081","sign":"http://localhost:8082","propostaId":"","contratoId":""}},
+{"_id":"fld_crm","_type":"request_group","parentId":"wrk_proposal","name":"CRM"},
+{"_id":"req_create","_type":"request","parentId":"fld_crm","name":"Criar proposta","method":"POST","url":"{{ _.crm }}/api/v1/propostas","headers":[{"name":"Content-Type","value":"application/json"}],"body":{"mimeType":"application/json","text":"{\n  \"clienteNome\": \"Cliente Insomnia\",\n  \"clienteEmail\": \"cliente.insomnia@example.com\",\n  \"itens\": [{\"nome\": \"Plano\", \"quantidade\": 1, \"precoUnitario\": 100}]\n}"}},
+{"_id":"req_get_proposal","_type":"request","parentId":"fld_crm","name":"Consultar proposta","method":"GET","url":"{{ _.crm }}/api/v1/propostas/{{ _.propostaId }}"},
+{"_id":"fld_sign","_type":"request_group","parentId":"wrk_proposal","name":"SIGN"},
+{"_id":"req_by_proposal","_type":"request","parentId":"fld_sign","name":"Contrato por proposta","method":"GET","url":"{{ _.sign }}/api/v1/contratos?propostaId={{ _.propostaId }}"},
+{"_id":"req_sign_client","_type":"request","parentId":"fld_sign","name":"Cliente aceita","method":"POST","url":"{{ _.sign }}/api/v1/contratos/{{ _.contratoId }}/assinaturas","headers":[{"name":"Content-Type","value":"application/json"}],"body":{"mimeType":"application/json","text":"{\"email\":\"cliente.insomnia@example.com\",\"aceitou\":true}"}},
+{"_id":"req_sign_company","_type":"request","parentId":"fld_sign","name":"Diretor aceita","method":"POST","url":"{{ _.sign }}/api/v1/contratos/{{ _.contratoId }}/assinaturas","headers":[{"name":"Content-Type","value":"application/json"}],"body":{"mimeType":"application/json","text":"{\"email\":\"diretor@powermobile.com\",\"aceitou\":true}"}}
+]}
