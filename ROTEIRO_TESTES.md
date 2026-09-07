@@ -65,7 +65,11 @@ curl -X POST http://localhost:8081/api/v1/propostas \
 
 Após criar a proposta, o CRM publica um evento no RabbitMQ. O SIGN consome e gera automaticamente um contrato. Aguarde **5 segundos** (tempo do OutboxRelayWorker + processamento) e consulte:
 
-> **Nota:** O SIGN não possui endpoint de listagem por propostaId exposto via controller. Para verificar, consulte diretamente o banco ou utilize o endpoint GET por ID após descobrir o ID do contrato.
+Consulte diretamente pelo ID da proposta:
+
+```bash
+curl "http://localhost:8082/api/v1/contratos?propostaId=<PROPOSTA_ID>"
+```
 
 **Alternativa — Buscar contrato por ID (após obter o ID via banco ou logs):**
 

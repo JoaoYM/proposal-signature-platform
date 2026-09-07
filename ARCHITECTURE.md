@@ -1,5 +1,7 @@
 # Architecture Guide — Proposal Signature Platform
 
+> Estado real: esta POC usa uma arquitetura em camadas inspirada em ports-and-adapters, mas **não é Clean Architecture rígida**. As entidades de domínio contêm anotações JPA e os repositórios em `domain` estendem Spring Data. O isolamento atual é operacional (dois bancos/usuários, outbox/inbox e mensageria), não independência completa de framework.
+
 Documentação técnica aprofundada da arquitetura de microsserviços, decisões de design e topologia do sistema.
 
 ---
