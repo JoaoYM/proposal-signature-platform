@@ -6,12 +6,13 @@ import com.powermobile.crm.infrastructure.config.RabbitMQConfig;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.amqp.rabbit.connection.CorrelationData;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Component
@@ -24,9 +25,8 @@ public class OutboxRelayWorker {
 
     // Executa a cada 5 segundos
     @Scheduled(fixedDelay = 5000)
-    @Transactional
     public void processarEventosPendentes() {
-        List<OutboxEvent> eventosPendentes = outboxEventRepository.findByStatusOrderByCreatedAtAsc("PENDING");
+        List<OutboxEvent> eventosPendentes = outboxEventRepository.findTop50ByStatusOrderByCreatedAtAsc("PENDING");
 
         if (eventosPendentes.isEmpty()) {
             return;
@@ -37,11 +37,13 @@ public class OutboxRelayWorker {
         for (OutboxEvent evento : eventosPendentes) {
             try {
                 // Envia a proposta para o sistema de assinatura (SIGN)
-                rabbitTemplate.convertAndSend(
-                        RabbitMQConfig.EXCHANGE_NAME, 
-                        RabbitMQConfig.ROUTING_KEY_PROPOSTA_CRIADA, 
-                        evento.getPayload()
-                );
+                CorrelationData correlation = new CorrelationData(evento.getId().toString());
+                rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME,
+                        RabbitMQConfig.ROUTING_KEY_PROPOSTA_CRIADA, evento.getPayload(), correlation);
+                CorrelationData.Confirm confirm = correlation.getFuture().get(5, TimeUnit.SECONDS);
+                if (!confirm.ack() || correlation.getReturned() != null) {
+                    throw new IllegalStateException("Broker não confirmou o roteamento: " + confirm.reason());
+                }
 
                 // Atualiza o status para não ser processado novamente
                 evento.setStatus("PROCESSED");

@@ -1,0 +1,7 @@
+CREATE DATABASE IF NOT EXISTS crm_db;
+CREATE DATABASE IF NOT EXISTS sign_db;
+CREATE USER IF NOT EXISTS 'crm_user'@'%' IDENTIFIED BY 'crm_password';
+CREATE USER IF NOT EXISTS 'sign_user'@'%' IDENTIFIED BY 'sign_password';
+GRANT ALL PRIVILEGES ON crm_db.* TO 'crm_user'@'%';
+GRANT ALL PRIVILEGES ON sign_db.* TO 'sign_user'@'%';
+FLUSH PRIVILEGES;

@@ -9,6 +9,9 @@ import com.powermobile.crm.domain.repository.OutboxEventRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import com.powermobile.crm.infrastructure.messaging.EventEnvelope;
+import java.time.Instant;
+import java.util.UUID;
 
 @Slf4j
 @Component
@@ -21,7 +24,11 @@ public class OutboxEventPublisherAdapter implements EventPublisher {
     @Override
     public void publish(String aggregateType, String aggregateId, Object payload) {
         try {
-            String json = objectMapper.writeValueAsString(payload);
+            UUID eventId = UUID.randomUUID();
+            String eventType = "PROPOSTA".equals(aggregateType) ? "PROPOSTA_CRIADA" : aggregateType;
+            EventEnvelope envelope = new EventEnvelope(eventId, eventType, Instant.now().toString(), 1,
+                    aggregateId, aggregateId, objectMapper.valueToTree(payload));
+            String json = objectMapper.writeValueAsString(envelope);
             OutboxEvent evento = OutboxEvent.builder()
                     .aggregateType(aggregateType)
                     .aggregateId(aggregateId)

@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
+import jakarta.servlet.http.HttpServletRequest;
 
 @RestController
 @RequestMapping("/api/v1/contratos")
@@ -24,10 +25,11 @@ public class ContratoController {
     @PostMapping("/{id}/assinaturas")
     public ResponseEntity<String> processarAssinatura(
             @PathVariable UUID id,
-            @RequestBody @Valid AssinaturaRequest request) {
+            @RequestBody @Valid AssinaturaRequest request,
+            HttpServletRequest httpRequest) {
 
         // A regra de negócio, ordem sequencial e auditoria estão todas encapsuladas no serviço
-        contratoUseCase.processarAssinatura(id, request.email(), request.aceitou());
+        contratoUseCase.processarAssinatura(id, request.email(), request.aceitou(), httpRequest.getRemoteAddr());
 
         String mensagem = request.aceitou() 
                 ? "Assinatura registrada com sucesso." 
@@ -42,5 +44,11 @@ public class ContratoController {
     public ContratoResponseDTO buscarContratoPorId(@PathVariable UUID id) {
         Contrato contrato = contratoUseCase.buscarPorId(id);
         return ContratoResponseDTO.fromEntity(contrato);
+    }
+
+    @GetMapping(params = "propostaId")
+    @Cacheable(value = "contratos-por-proposta", key = "#propostaId")
+    public ContratoResponseDTO buscarPorProposta(@RequestParam String propostaId) {
+        return ContratoResponseDTO.fromEntity(contratoUseCase.buscarPorPropostaId(propostaId));
     }
 }

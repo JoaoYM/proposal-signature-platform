@@ -13,8 +13,9 @@ CREATE TABLE participantes (
     nome VARCHAR(255) NOT NULL,
     email VARCHAR(255) NOT NULL,
     ordem INT NOT NULL,
-    assinou BOOLEAN NOT NULL DEFAULT FALSE,
-    data_assinatura TIMESTAMP NULL,
+    data_hora DATETIME(6) NULL,
+    ip_origem VARCHAR(255) NULL,
+    hash_validacao VARCHAR(64) NULL,
     contrato_id VARCHAR(36) NOT NULL,
     CONSTRAINT fk_participante_contrato FOREIGN KEY (contrato_id) REFERENCES contratos(id) ON DELETE CASCADE
 );
@@ -25,14 +26,16 @@ CREATE TABLE contrato_audit_log (
     acao VARCHAR(100) NOT NULL,
     ator VARCHAR(255) NOT NULL,
     detalhes TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
 );
 
-CREATE TABLE outbox_events (
+CREATE TABLE sign_outbox_events (
     id VARCHAR(36) PRIMARY KEY,
     aggregate_type VARCHAR(100) NOT NULL,
     aggregate_id VARCHAR(100) NOT NULL,
     payload TEXT NOT NULL,
     status VARCHAR(50) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
 );
+
+CREATE TABLE inbox_events (event_id VARCHAR(36) PRIMARY KEY, event_type VARCHAR(100) NOT NULL, aggregate_id VARCHAR(100) NOT NULL, occurred_at DATETIME(6) NOT NULL, processed_at DATETIME(6) NOT NULL);

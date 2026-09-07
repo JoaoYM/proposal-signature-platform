@@ -23,7 +23,7 @@ public class Contrato {
     @Column(name = "proposta_id", nullable = false, unique = true)
     private String propostaId;
 
-    @Column(columnDefinition = "TEXT", nullable = false)
+    @Column(columnDefinition = "TEXT", nullable = false, updatable = false)
     private String conteudo;
 
     @Enumerated(EnumType.STRING)

@@ -21,6 +21,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 
 @Slf4j
 @Service
@@ -62,6 +66,7 @@ public class ContratoServiceImpl implements ContratoUseCase {
         try {
             registrarAuditoria(contratoSalvo.getId().toString(), AcaoAuditoria.CONTRATO_GERADO, "Sistema",
             "Contrato criado a partir da proposta");
+            notificarCrmAlteracaoStatus(contratoSalvo);
             log.info("🎯 CONTRATO GERADO! Copie este ID para a assinatura: {}", contratoSalvo.getId());
         } catch (Exception e) {
             log.error("Erro ao registrar auditoria para o contrato: {}", contratoSalvo.getId(), e);
@@ -76,9 +81,22 @@ public class ContratoServiceImpl implements ContratoUseCase {
     }
 
     @Override
+    public Contrato buscarPorPropostaId(String propostaId) {
+        return contratoRepository.findByPropostaId(propostaId)
+                .orElseThrow(() -> new ContratoNotFoundException("Contrato não encontrado para a proposta: " + propostaId));
+    }
+
+    @Override
     @Transactional
     @CacheEvict(value = "contratos", key = "#contratoId")
     public void processarAssinatura(UUID contratoId, String emailParticipante, boolean aceitou) {
+        processarAssinatura(contratoId, emailParticipante, aceitou, "unknown");
+    }
+
+    @Override
+    @Transactional
+    @CacheEvict(value = {"contratos", "contratos-por-proposta"}, allEntries = true)
+    public void processarAssinatura(UUID contratoId, String emailParticipante, boolean aceitou, String ipOrigem) {
         Contrato contrato = contratoRepository.findById(contratoId)
                 .orElseThrow(() -> new ContratoNotFoundException(contratoId));
 
@@ -104,10 +122,11 @@ public class ContratoServiceImpl implements ContratoUseCase {
         }
 
         if (aceitou) {
+            LocalDateTime instante = LocalDateTime.now();
             Assinatura assinaturaFisica = Assinatura.builder()
-                    .dataHora(LocalDateTime.now())
-                    .ipOrigem("127.0.0.1") 
-                    .hashValidacao(UUID.randomUUID().toString())
+                    .dataHora(instante)
+                    .ipOrigem(ipOrigem)
+                    .hashValidacao(calcularHash(contrato, emailParticipante, instante, ipOrigem))
                     .build();
 
             atual.registrarAssinatura(assinaturaFisica);
@@ -130,6 +149,17 @@ public class ContratoServiceImpl implements ContratoUseCase {
         }
 
         contratoRepository.save(contrato);
+    }
+
+    private String calcularHash(Contrato contrato, String email, LocalDateTime instante, String ip) {
+        try {
+            String evidencia = contrato.getId() + "|" + contrato.getPropostaId() + "|" + contrato.getConteudo()
+                    + "|" + email + "|" + instante + "|" + ip;
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                    .digest(evidencia.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 indisponível", e);
+        }
     }
 
     private void registrarAuditoria(String contratoId, AcaoAuditoria acao, String ator, String detalhes) {
